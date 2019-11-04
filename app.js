@@ -1,5 +1,6 @@
 const Koa = require('koa')
-const app = new Koa()
+const WebSocket = require("koa-websocket")
+const app = WebSocket(new Koa())
 const views = require('koa-views')
 const json = require('koa-json')
 const onerror = require('koa-onerror')
@@ -35,6 +36,27 @@ app.use(async (ctx, next) => {
 // routes
 app.use(index.routes(), index.allowedMethods())
 app.use(users.routes(), users.allowedMethods())
+
+// -----------------------webSocket----------------------//
+let ctxs = [];
+app.listen(80);
+app.ws.use((ctx, next) => {
+  // console.log(JSON.stringify(ctx.websocket), '-----content-----')
+  /* 每打开一个连接就往 上线文数组中 添加一个上下文 */
+  ctxs.push(ctx);
+  ctx.websocket.on("message", (message) => {
+    console.log(message);
+    for(let i = 0; i < ctxs.length; i++) {
+      ctxs[i].websocket.send(message);
+    }
+  });
+  ctx.websocket.on("close", (message) => {
+      /* 连接关闭时, 清理 上下文数组, 防止报错 */
+      let index = ctxs.indexOf(ctx);
+      ctxs.splice(index, 1);
+  });
+});
+// -----------------------webSocket----------------------//
 
 // error-handling
 app.on('error', (err, ctx) => {
